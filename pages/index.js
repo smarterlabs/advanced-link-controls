@@ -1,14 +1,11 @@
-import { Heading, Page } from "@shopify/polaris";
+import { Heading, Page } from "@shopify/polaris"
+import ConfigForm from '../components/config-form'
 
 export default function Index() {
   return (
     <Page>
-      <Heading>
-        Shopify app with Node and React{" "}
-        <span role="img" aria-label="tada emoji">
-          🎉
-        </span>
-      </Heading>
+      <br /><br />
+      <ConfigForm />
     </Page>
   );
 }
