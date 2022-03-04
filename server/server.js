@@ -15,6 +15,12 @@ const app = next({
 });
 const handle = app.getRequestHandler();
 
+const defaultConfig = {
+  newTab: false,
+  secureLinks: false,
+  forceHttps: false,
+}
+
 Shopify.Context.initialize({
   API_KEY: process.env.SHOPIFY_API_KEY,
   API_SECRET_KEY: process.env.SHOPIFY_API_SECRET,
@@ -129,19 +135,18 @@ app.prepare().then(async () => {
         data: {
           "asset": {
             "key": configPath,
-            "value": JSON.stringify({
-              newTab: false,
-              secureLinks: false,
-              forceHttps: false,
-            }),
+            "value": JSON.stringify(defaultConfig),
           },
         },
         type: DataType.JSON,
       })
       console.log(`newConfig`, newConfig)
+      ctx.body = defaultConfig
     }
-
-    ctx.body = theme
+    else{
+      console.log(`Found existing config:`, existingConfig)
+      ctx.body = JSON.parse(existingConfig.body.asset.value)
+    }
     ctx.status = 200
   })
 
