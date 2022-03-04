@@ -90,6 +90,15 @@ app.prepare().then(async () => {
     }
   );
 
+  router.get("/getScriptTags", async (ctx) => {
+    const session = await Shopify.Utils.loadCurrentSession(ctx.req, ctx.res);
+    const client = new Shopify.Clients.Rest(session.shop, session.accessToken);
+    ctx.body = await client.get({
+       path: 'themes',
+     });
+     ctx.status = 200;
+  })
+
   router.get("(/_next/static/.*)", handleRequest); // Static content is clear
   router.get("/_next/webpack-hmr", handleRequest); // Webpack content is clear
   router.get("(.*)", async (ctx) => {

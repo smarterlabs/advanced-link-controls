@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Form,
   FormLayout,
@@ -6,13 +6,39 @@ import {
   Button,
   TextStyle,
 } from "@shopify/polaris"
+import { useAppBridge } from '@shopify/app-bridge-react'
+import useShopifyRest from './use-shopify-rest'
+import axios from 'axios'
 
-export default function ConfigForm() {
+
+export default function ConfigForm(props) {
+  const client = useShopifyRest()
   const [config, setConfig] = useState({
     newTab: false,
     secureLinks: false,
     forceHttps: false,
   })
+  const app = useAppBridge()
+
+
+  console.log(`app`, app)
+
+  async function fetchConfig(){
+    const query = window.location.search
+    // Get shop param
+    const shop = query.split(`&`).find(param => param.startsWith(`shop=`)).split(`=`)[1]
+    console.log(`shop`, shop)
+    // Fetch all themes
+    const themes = await props.fetch(`/getScriptTags`)
+    const data = await themes.json()
+    console.log(`themes`, data)
+    
+
+  }
+
+  useEffect(() => {
+    fetchConfig()
+  }, [])
 
   function updateConfig(obj){
     setConfig({
