@@ -26,12 +26,17 @@ export default function ConfigForm(props) {
   async function fetchConfig(){
     const query = window.location.search
     // Get shop param
-    const shop = query.split(`&`).find(param => param.startsWith(`shop=`)).split(`=`)[1]
+    if(!query) return
+    const shopPart = query.split(`&`).find(param => param.startsWith(`shop=`))
+    if(!shopPart) return
+    const shop = shopPart.split(`=`)[1]
     console.log(`shop`, shop)
     // Fetch all themes
-    const themes = await props.fetch(`/getScriptTags`)
-    const data = await themes.json()
-    console.log(`themes`, data)
+    const configRes = await props.fetch(`/config`, {
+      method: `GET`,
+    })
+    const data = await configRes.json()
+    console.log(`data`, data)
     
 
   }
