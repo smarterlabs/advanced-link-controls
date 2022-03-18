@@ -2,11 +2,11 @@ import "@babel/polyfill";
 import dotenv from "dotenv";
 import "isomorphic-fetch";
 import createShopifyAuth, { verifyRequest } from "@shopify/koa-shopify-auth";
-import Shopify, { ApiVersion, DataType } from "@shopify/shopify-api";
+import Shopify, { ApiVersion } from "@shopify/shopify-api";
 import Koa from "koa";
 import next from "next";
 import Router from "koa-router";
-
+import * as handlers from "./handlers/index";
 dotenv.config();
 const port = parseInt(process.env.PORT, 10) || 8081;
 const dev = process.env.NODE_ENV !== "production";
@@ -15,19 +15,12 @@ const app = next({
 });
 const handle = app.getRequestHandler();
 
-const defaultConfig = {
-  newTab: false,
-  secureLinks: false,
-  forceHttps: false,
-}
-
 Shopify.Context.initialize({
   API_KEY: process.env.SHOPIFY_API_KEY,
   API_SECRET_KEY: process.env.SHOPIFY_API_SECRET,
   SCOPES: process.env.SCOPES.split(","),
   HOST_NAME: process.env.HOST.replace(/https:\/\/|\/$/g, ""),
-  // API_VERSION: ApiVersion.October20,
-  API_VERSION: '2022-01',
+  API_VERSION: ApiVersion.October20,
   IS_EMBEDDED_APP: true,
   // This should be replaced with your preferred storage strategy
   SESSION_STORAGE: new Shopify.Session.MemorySessionStorage(),
@@ -69,7 +62,9 @@ app.prepare().then(async () => {
         }
 
         // Redirect to app with shop parameter upon auth
-        ctx.redirect(`/?shop=${shop}&host=${host}`);
+        //ctx.redirect(`/?shop=${shop}&host=${host}`);
+        server.context.client = await handlers.createClient(shop, accessToken);
+        await handlers.getSubscriptionUrl(ctx);
       },
     })
   );
@@ -97,58 +92,61 @@ app.prepare().then(async () => {
     }
   );
 
-  router.get("/config", async (ctx) => {
-    const session = await Shopify.Utils.loadCurrentSession(ctx.req, ctx.res)
-    const client = new Shopify.Clients.Rest(session.shop, session.accessToken)
-    const themes = await client.get({
-      path: 'themes',
-    })
-    console.log(`themes`, themes)
-    const theme = themes.body.themes.find(theme => theme.role === 'main')
-    console.log(`theme`, theme)
-
-    const configPath = `assets/_advanced-link-controls-config.json`
-    // const configPath = `templates/index.liquid`
-    console.log(`Checking for existing config...`)
-    let existingConfig
-    try{
-      existingConfig = await client.get({
-        path: `themes/${theme.id}/assets`,
-        query: { "asset[key]": configPath },
-      }).catch(err => {
-        console.error(err)
-      })
-    }
-    catch(err){
-      console.log(`No existing config found.`)
-      console.error(err)
-    }
 
 
-    console.log(`existingConfig`, existingConfig)
+  // router.get("/config", async (ctx) => {
+  //   const session = await Shopify.Utils.loadCurrentSession(ctx.req, ctx.res)
+  //   const client = new Shopify.Clients.Rest(session.shop, session.accessToken)
+  //   const themes = await client.get({
+  //     path: 'themes',
+  //   })
+  //   console.log(`themes`, themes)
+  //   const theme = themes.body.themes.find(theme => theme.role === 'main')
+  //   console.log(`theme`, theme)
 
-    // Create config if it doesn't exist
-    if (!existingConfig) {
-      console.log(`Creating config...`)
-      const newConfig = await client.put({
-        path: `themes/${theme.id}/assets`,
-        data: {
-          "asset": {
-            "key": configPath,
-            "value": JSON.stringify(defaultConfig),
-          },
-        },
-        type: DataType.JSON,
-      })
-      console.log(`newConfig`, newConfig)
-      ctx.body = defaultConfig
-    }
-    else{
-      console.log(`Found existing config:`, existingConfig)
-      ctx.body = JSON.parse(existingConfig.body.asset.value)
-    }
-    ctx.status = 200
-  })
+  //   const configPath = `assets/_advanced-link-controls-config.json`
+  //   // const configPath = `templates/index.liquid`
+  //   console.log(`Checking for existing config...`)
+  //   let existingConfig
+  //   try{
+  //     existingConfig = await client.get({
+  //       path: `themes/${theme.id}/assets`,
+  //       query: { "asset[key]": configPath },
+  //     }).catch(err => {
+  //       console.error(err)
+  //     })
+  //   }
+  //   catch(err){
+  //     console.log(`No existing config found.`)
+  //     console.error(err)
+  //   }
+
+
+  //   console.log(`existingConfig`, existingConfig)
+
+  //   // Create config if it doesn't exist
+  //   if (!existingConfig) {
+  //     console.log(`Creating config...`)
+  //     const newConfig = await client.put({
+  //       path: `themes/${theme.id}/assets`,
+  //       data: {
+  //         "asset": {
+  //           "key": configPath,
+  //           "value": JSON.stringify(defaultConfig),
+  //         },
+  //       },
+  //       type: DataType.JSON,
+  //     })
+  //     console.log(`newConfig`, newConfig)
+  //     ctx.body = defaultConfig
+  //   }
+  //   else{
+  //     console.log(`Found existing config:`, existingConfig)
+  //     ctx.body = JSON.parse(existingConfig.body.asset.value)
+  //   }
+  //   ctx.status = 200
+  // })
+
 
   router.get("(/_next/static/.*)", handleRequest); // Static content is clear
   router.get("/_next/webpack-hmr", handleRequest); // Webpack content is clear
@@ -157,11 +155,14 @@ app.prepare().then(async () => {
 
     // This shop hasn't been seen yet, go through OAuth to create a session
     if (ACTIVE_SHOPIFY_SHOPS[shop] === undefined) {
+      console.log("1"+shop);
       ctx.redirect(`/auth?shop=${shop}`);
     } else {
       await handleRequest(ctx);
     }
   });
+
+
 
   server.use(router.allowedMethods());
   server.use(router.routes());

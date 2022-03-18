@@ -33,8 +33,6 @@ function userLoggedInFetch(app) {
 function MyProvider(props) {
   const app = useAppBridge();
 
-
-  const fetchFunction = userLoggedInFetch(app);
   const client = new ApolloClient({
     fetch: userLoggedInFetch(app),
     fetchOptions: {
@@ -46,7 +44,7 @@ function MyProvider(props) {
 
   return (
     <ApolloProvider client={client}>
-      <Component {...props} fetch={fetchFunction} />
+      <Component {...props} />
     </ApolloProvider>
   );
 }
